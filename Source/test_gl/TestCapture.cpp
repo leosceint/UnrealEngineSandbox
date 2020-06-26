@@ -68,7 +68,7 @@ bool UTestCapture::CaptureAsArray(class USceneCaptureComponent2D* CameraCapture,
 {
 	if ((CameraCapture == nullptr) || (CameraCapture->TextureTarget == nullptr))
 		return false;
-	FRenderTarget* RenderTarget = CameraCapture->TextureTarget->GameThread_GetRenderTargetResource();
+	FRenderTarget* RenderTarget = CameraCapture->TextureTarget->GetRenderTargetResource();
 	if (RenderTarget == nullptr)
 		return false;
 
@@ -77,7 +77,7 @@ bool UTestCapture::CaptureAsArray(class USceneCaptureComponent2D* CameraCapture,
 	if (CameraCapture->TextureTarget->GetFormat() != PF_B8G8R8A8)
 		return false;
 
-	// CameraCapture->UpdateContent();
+	CameraCapture->UpdateContent();
 
 	if (!RenderTarget->ReadPixels(RawPixels))
 		return false;

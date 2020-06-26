@@ -107,7 +107,10 @@ uint32 FCaptureWorker::Run()
 		FDateTime timeBeginningOfTick = FDateTime::UtcNow();
 
 		TArray<uint8> CapturedImage;
-		bool bCaptured = UTestCapture::CaptureAsArray(CameraCapture, CapturedImage);
+		bool bCaptured;
+		
+		bCaptured = UTestCapture::CaptureAsArray(CameraCapture, CapturedImage);
+		
 		if(!bCaptured)
 			continue;
 		Inbox.Enqueue(CapturedImage);
