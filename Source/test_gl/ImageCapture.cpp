@@ -53,15 +53,15 @@ void AImageCapture::ExecuteOnImageCaptured(TWeakObjectPtr<AImageCapture> thisObj
 	if(!thisObj.IsValid())
  		return;
 
-	TArray<uint8> Image = CaptureWorker->ReadFromInbox();
-	ImageCapturedDelegate.ExecuteIfBound(Image);
+	//TArray<uint8> Image = CaptureWorker->ReadFromInbox();
+	//ImageCapturedDelegate.ExecuteIfBound(Image);
 }
 
 FCaptureWorker::FCaptureWorker(float inTimeBetweenTicks, class USceneCaptureComponent2D* Camera)
 :TimeBetweenTicks(inTimeBetweenTicks)
 ,CameraCapture(Camera)
 {
-
+	RenderTarget = CameraCapture->TextureTarget->GameThread_GetRenderTargetResource();
 }
 
 FCaptureWorker::~FCaptureWorker()
@@ -107,16 +107,16 @@ uint32 FCaptureWorker::Run()
 		FDateTime timeBeginningOfTick = FDateTime::UtcNow();
 
 		TArray<uint8> CapturedImage;
-		bool bCaptured;
+		bool bCaptured = false;
 		
-		bCaptured = UTestCapture::CaptureAsArray(CameraCapture, CapturedImage);
-		
-		if(!bCaptured)
-			continue;
-		Inbox.Enqueue(CapturedImage);
-		AsyncTask(ENamedThreads::GameThread, [this](){
-			ThreadSpawnerActor.Get()->ExecuteOnImageCaptured(ThreadSpawnerActor);
-		});
+
+		if (bCaptured)
+		{
+			Inbox.Enqueue(CapturedImage);
+			AsyncTask(ENamedThreads::GameThread, [this](){
+				ThreadSpawnerActor.Get()->ExecuteOnImageCaptured(ThreadSpawnerActor);
+			});
+		}
 
 		/* In order to sleep, we will account for how much this tick took due to sending and receiving */
 		FDateTime timeEndOfTick = FDateTime::UtcNow();

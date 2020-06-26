@@ -2,11 +2,11 @@
 
 #pragma once
 
-#include "TestCapture.h"
 #include "HAL/Runnable.h"
 #include "HAL/ThreadSafeBool.h"
 #include "Containers/Queue.h"
 #include "UObject/WeakObjectPtrTemplates.h"
+#include "Engine/TextureRenderTarget2D.h"
 #include "Components/SceneCaptureComponent2D.h"
 
 #include "CoreMinimal.h"
@@ -20,7 +20,11 @@ class TEST_GL_API AImageCapture : public AActor
 {
 	GENERATED_BODY()
 	
-public:	
+public:
+	UFUNCTION(BluePrintCallable, Category = "Image Capture")
+	void CaptureImage(class USceneCaptureComponent2D* CameraCapture, 
+		const FImageCapturedDelegate& OnImageCaptured);
+
 	// Sets default values for this actor's properties
 	AImageCapture();
 
@@ -33,20 +37,17 @@ public:
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 
-private:
-	TUniquePtr<class FCaptureWorker> CaptureWorker;
-	FImageCapturedDelegate ImageCapturedDelegate;
-
 public:
-	UFUNCTION(BluePrintCallable, Category = "Image Capture")
-	void CaptureImage(class USceneCaptureComponent2D* CameraCapture, 
-		const FImageCapturedDelegate& OnImageCaptured);
-
 	void ExecuteOnImageCaptured(TWeakObjectPtr<AImageCapture> thisObj);
 
 	/* Time between ticks. Please account for the fact that it takes 1ms to wake up on a modern PC, so 0.01f would effectively be 0.011f */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Image Capture")
-		float TimeBetweenTicks = 0.008f;
+	float TimeBetweenTicks = 0.008f;
+
+private:
+	TUniquePtr<class FCaptureWorker> CaptureWorker;
+	FImageCapturedDelegate ImageCapturedDelegate;
+
 };
 
 // Thread capture class
@@ -58,6 +59,7 @@ private:
 	TWeakObjectPtr<AImageCapture> ThreadSpawnerActor;
 	float TimeBetweenTicks;
 	class USceneCaptureComponent2D* CameraCapture;
+	class FRenderTarget* RenderTarget;
 	TQueue<TArray<uint8>, EQueueMode::Spsc> Inbox;
 
 public:

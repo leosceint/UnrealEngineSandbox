@@ -14,11 +14,12 @@ bool UTestCapture::ImageFileAsArray(FString ImageFile, TArray<uint8>& Image)
 	return FFileHelper::LoadFileToArray(Image, *(FPaths::ProjectDir() + ImageFile));
 }
 
-bool UTestCapture::CaptureAsFile(class USceneCaptureComponent2D* CameraCapture, const FLinearColor ClearColour)
+bool UTestCapture::CaptureAsFile(class USceneCaptureComponent2D* CameraCapture)
 {
 	if ((CameraCapture == nullptr) || (CameraCapture->TextureTarget == nullptr))
 		return false;
 	FRenderTarget* RenderTarget = CameraCapture->TextureTarget->GameThread_GetRenderTargetResource();
+	FRenderTarget* RenderTarget_test = CameraCapture->TextureTarget->GetRenderTargetResource();
 	if (RenderTarget == nullptr)
 		return false;
 
@@ -35,8 +36,6 @@ bool UTestCapture::CaptureAsFile(class USceneCaptureComponent2D* CameraCapture, 
 	const int32 Width = CameraCapture->TextureTarget->SizeX;
 	const int32 Height = CameraCapture->TextureTarget->SizeY;
 
-	FColor ClearFColour = ClearColour.ToFColor(false);
-
 	for (auto& Pixel : RawPixels)
 	{
 		// Switch Red/Blue changes.
@@ -44,9 +43,7 @@ bool UTestCapture::CaptureAsFile(class USceneCaptureComponent2D* CameraCapture, 
 		const uint8 PB = Pixel.B;
 		Pixel.R = PB;
 		Pixel.B = PR;
-
-		// Set alpha based on RGB values of ClearColour.
-		Pixel.A = ((Pixel.R == ClearFColour.R) && (Pixel.G == ClearFColour.G) && (Pixel.B == ClearFColour.B)) ? 0 : 255;
+		Pixel.A = 255;
 	}
 
 	IImageWrapperModule& ImageWrapperModule = FModuleManager::LoadModuleChecked<IImageWrapperModule>(FName("ImageWrapper"));

@@ -24,7 +24,7 @@ public:
 		static bool ImageFileAsArray(FString ImageFile, TArray<uint8>& Image);
 
 	UFUNCTION(BluePrintCallable, Category = "Image Preparing")
-		static bool CaptureAsFile(class USceneCaptureComponent2D* CameraCapture, const FLinearColor ClearColour);
+		static bool CaptureAsFile(class USceneCaptureComponent2D* CameraCapture);
 
 	UFUNCTION(BluePrintCallable, Category = "Image Preparing")
 		static bool CaptureAsArray(class USceneCaptureComponent2D* CameraCapture, TArray<uint8>& Image);
