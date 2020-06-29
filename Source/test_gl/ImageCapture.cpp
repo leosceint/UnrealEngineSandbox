@@ -6,6 +6,9 @@
 #include "HAL/RunnableThread.h"
 #include "Async/Async.h"
 #include "Logging/MessageLog.h"
+#include "IImageWrapper.h"
+#include "IImageWrapperModule.h"
+#include "Modules/ModuleManager.h"
 
 // Sets default values
 AImageCapture::AImageCapture()
@@ -53,8 +56,8 @@ void AImageCapture::ExecuteOnImageCaptured(TWeakObjectPtr<AImageCapture> thisObj
 	if(!thisObj.IsValid())
  		return;
 
-	//TArray<uint8> Image = CaptureWorker->ReadFromInbox();
-	//ImageCapturedDelegate.ExecuteIfBound(Image);
+	TArray<uint8> Image = CaptureWorker->ReadFromInbox();
+	ImageCapturedDelegate.ExecuteIfBound(Image);
 }
 
 FCaptureWorker::FCaptureWorker(float inTimeBetweenTicks, class USceneCaptureComponent2D* Camera)
@@ -102,20 +105,67 @@ bool FCaptureWorker::Init()
 
 uint32 FCaptureWorker::Run()
 {
+	AsyncTask(ENamedThreads::GameThread, [this](){
+			UE_LOG(LogTemp, Log, TEXT("Start worker"));
+		});
+
 	while(bRun)
 	{
 		FDateTime timeBeginningOfTick = FDateTime::UtcNow();
 
-		TArray<uint8> CapturedImage;
 		bool bCaptured = false;
 		
+		TArray<FColor> RawPixels;
 
+		CameraCapture->UpdateContent();
+		//RenderTarget->ReadPixels(RawPixels);
+		AsyncTask(ENamedThreads::GameThread, [this](){
+			UE_LOG(LogTemp, Log, TEXT("Before Capture"));
+		});
+		bCaptured = ThreadSafe_ReadPixels(RenderTarget, RawPixels);
+		AsyncTask(ENamedThreads::GameThread, [this](){
+			UE_LOG(LogTemp, Log, TEXT("After Capture."));
+		});
 		if (bCaptured)
 		{
-			Inbox.Enqueue(CapturedImage);
 			AsyncTask(ENamedThreads::GameThread, [this](){
-				ThreadSpawnerActor.Get()->ExecuteOnImageCaptured(ThreadSpawnerActor);
+				UE_LOG(LogTemp, Log, TEXT("WE CAPTURE!"));
 			});
+			TArray<uint8> CapturedImage;
+			for (auto& Pixel : RawPixels)
+			{
+				const uint8 PR = Pixel.R;
+				const uint8 PB = Pixel.B;
+				Pixel.R = PB;
+				Pixel.B = PR;
+				Pixel.A = 255;
+			}
+
+			AsyncTask(ENamedThreads::GameThread, [this](){
+				UE_LOG(LogTemp, Log, TEXT("WE REFORMAT Image!"));
+			});
+
+			IImageWrapperModule& ImageWrapperModule = FModuleManager::LoadModuleChecked<IImageWrapperModule>(FName("ImageWrapper"));
+			TSharedPtr<IImageWrapper> PngImageWrapper = ImageWrapperModule.CreateImageWrapper(EImageFormat::PNG);
+
+			const int32 Width = CameraCapture->TextureTarget->SizeX;
+			const int32 Height = CameraCapture->TextureTarget->SizeY;
+
+			if (PngImageWrapper.IsValid() && PngImageWrapper->SetRaw(&RawPixels[0],
+			RawPixels.Num() * sizeof(FColor), Width, Height, ERGBFormat::RGBA, 8))
+			{
+				CapturedImage = PngImageWrapper->GetCompressed();
+				
+				AsyncTask(ENamedThreads::GameThread, [this](){
+					UE_LOG(LogTemp, Log, TEXT("WE Compress Image!"));
+				});
+
+				Inbox.Enqueue(CapturedImage);
+
+				AsyncTask(ENamedThreads::GameThread, [this](){
+				 	ThreadSpawnerActor.Get()->ExecuteOnImageCaptured(ThreadSpawnerActor);
+				 });
+			}
 		}
 
 		/* In order to sleep, we will account for how much this tick took due to sending and receiving */
@@ -140,4 +190,50 @@ void FCaptureWorker::Stop()
 void FCaptureWorker::Exit()
 {
 
+}
+
+bool FCaptureWorker::ThreadSafe_ReadPixels(FRenderTarget* RT, TArray<FColor>& OutImageData, 
+	FReadSurfaceDataFlags InFlags, FIntRect InRect)
+{
+	if (InRect == FIntRect(0, 0, 0, 0))
+    {
+        InRect = FIntRect(0, 0, RT->GetSizeXY().X, RT->GetSizeXY().Y);
+    }
+
+	// Read the render target surface data back.    
+    struct FReadSurfaceContext
+    {
+        FRenderTarget* SrcRenderTarget;
+        TArray<FColor>* OutData;
+        FIntRect Rect;
+        FReadSurfaceDataFlags Flags;
+    };
+    OutImageData.Reset();
+    FReadSurfaceContext ReadSurfaceContext =
+    {
+        RT,
+        &OutImageData,
+        InRect,
+        InFlags
+    };
+
+	    ENQUEUE_UNIQUE_RENDER_COMMAND_ONEPARAMETER(
+        ReadSurfaceCommand,
+        FReadSurfaceContext, Context, ReadSurfaceContext,
+        {
+            RHICmdList.ReadSurfaceData(
+                Context.SrcRenderTarget->GetRenderTargetTexture(),
+                Context.Rect,
+                *Context.OutData,
+                Context.Flags
+            );
+        });
+
+	while(OutImageData.Num() == 0)
+	{
+		FWindowsPlatformProcess::Sleep(1.0f);
+		//FPlatformProcess::Sleep(TimeBetweenTicks);		
+	}
+
+	return OutImageData.Num() > 0;
 }

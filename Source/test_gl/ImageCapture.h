@@ -42,7 +42,7 @@ public:
 
 	/* Time between ticks. Please account for the fact that it takes 1ms to wake up on a modern PC, so 0.01f would effectively be 0.011f */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Image Capture")
-	float TimeBetweenTicks = 0.008f;
+	float TimeBetweenTicks = 0.08f;//0.008f;
 
 private:
 	TUniquePtr<class FCaptureWorker> CaptureWorker;
@@ -75,6 +75,11 @@ public:
 	virtual uint32 Run() override;
 	virtual void Stop() override;
 	virtual void Exit() override;
+
+private:
+
+	bool ThreadSafe_ReadPixels(FRenderTarget* RT, TArray<FColor>& OutImageData, 
+	FReadSurfaceDataFlags InFlags = FReadSurfaceDataFlags(RCM_UNorm, CubeFace_MAX), FIntRect InRect = FIntRect(0, 0, 0, 0));
 
 private:
 	FThreadSafeBool bRun = false;

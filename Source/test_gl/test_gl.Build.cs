@@ -7,8 +7,16 @@ public class test_gl : ModuleRules
 	public test_gl(ReadOnlyTargetRules Target) : base(Target)
 	{
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
-	
-		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "Sockets", "Networking" });
+		//bEnableExceptions = true;
+		PublicDependencyModuleNames.AddRange(new string[] { 
+		"Core",
+		"CoreUObject",
+		"Engine", 
+		"InputCore", 
+		"Sockets", 
+		"Networking", 
+		"RenderCore", 
+		"RHI"});
 
 		PrivateDependencyModuleNames.AddRange(new string[] {  });
 
