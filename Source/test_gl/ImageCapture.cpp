@@ -9,6 +9,8 @@
 #include "IImageWrapper.h"
 #include "IImageWrapperModule.h"
 #include "Modules/ModuleManager.h"
+#include "Misc/FileHelper.h"
+#include "Misc/Paths.h"
 
 // Sets default values
 AImageCapture::AImageCapture()
@@ -47,7 +49,7 @@ void AImageCapture::CaptureImage(class USceneCaptureComponent2D* CameraCapture, 
 	ImageCapturedDelegate = OnImageCaptured;
 	
 	TWeakObjectPtr<AImageCapture> thisWeakObjPtr = TWeakObjectPtr<AImageCapture>(this);
-	CaptureWorker = TUniquePtr<FCaptureWorker>(new FCaptureWorker(TimeBetweenTicks, CameraCapture));
+	CaptureWorker = TUniquePtr<FCaptureWorker>(new FCaptureWorker(thisWeakObjPtr, TimeBetweenTicks, CameraCapture));
 	CaptureWorker->Start();
 }
 
@@ -60,8 +62,9 @@ void AImageCapture::ExecuteOnImageCaptured(TWeakObjectPtr<AImageCapture> thisObj
 	ImageCapturedDelegate.ExecuteIfBound(Image);
 }
 
-FCaptureWorker::FCaptureWorker(float inTimeBetweenTicks, class USceneCaptureComponent2D* Camera)
-:TimeBetweenTicks(inTimeBetweenTicks)
+FCaptureWorker::FCaptureWorker(TWeakObjectPtr<AImageCapture> InOwner, float inTimeBetweenTicks, class USceneCaptureComponent2D* Camera)
+:ThreadSpawnerActor(InOwner)
+,TimeBetweenTicks(inTimeBetweenTicks)
 ,CameraCapture(Camera)
 {
 	RenderTarget = CameraCapture->TextureTarget->GameThread_GetRenderTargetResource();
@@ -118,19 +121,11 @@ uint32 FCaptureWorker::Run()
 		TArray<FColor> RawPixels;
 
 		CameraCapture->UpdateContent();
-		//RenderTarget->ReadPixels(RawPixels);
-		AsyncTask(ENamedThreads::GameThread, [this](){
-			UE_LOG(LogTemp, Log, TEXT("Before Capture"));
-		});
+
 		bCaptured = ThreadSafe_ReadPixels(RenderTarget, RawPixels);
-		AsyncTask(ENamedThreads::GameThread, [this](){
-			UE_LOG(LogTemp, Log, TEXT("After Capture."));
-		});
+
 		if (bCaptured)
 		{
-			AsyncTask(ENamedThreads::GameThread, [this](){
-				UE_LOG(LogTemp, Log, TEXT("WE CAPTURE!"));
-			});
 			TArray<uint8> CapturedImage;
 			for (auto& Pixel : RawPixels)
 			{
@@ -140,10 +135,6 @@ uint32 FCaptureWorker::Run()
 				Pixel.B = PR;
 				Pixel.A = 255;
 			}
-
-			AsyncTask(ENamedThreads::GameThread, [this](){
-				UE_LOG(LogTemp, Log, TEXT("WE REFORMAT Image!"));
-			});
 
 			IImageWrapperModule& ImageWrapperModule = FModuleManager::LoadModuleChecked<IImageWrapperModule>(FName("ImageWrapper"));
 			TSharedPtr<IImageWrapper> PngImageWrapper = ImageWrapperModule.CreateImageWrapper(EImageFormat::PNG);
@@ -155,10 +146,12 @@ uint32 FCaptureWorker::Run()
 			RawPixels.Num() * sizeof(FColor), Width, Height, ERGBFormat::RGBA, 8))
 			{
 				CapturedImage = PngImageWrapper->GetCompressed();
-				
-				AsyncTask(ENamedThreads::GameThread, [this](){
-					UE_LOG(LogTemp, Log, TEXT("WE Compress Image!"));
-				});
+
+				// FFileHelper::SaveArrayToFile(CapturedImage, *(FPaths::ProjectDir() + TEXT("Out.png")));
+
+				// AsyncTask(ENamedThreads::GameThread, [this](){
+				// 	UE_LOG(LogTemp, Log, TEXT("WE SAVE Image as FILE!"));
+				// });
 
 				Inbox.Enqueue(CapturedImage);
 
@@ -231,8 +224,8 @@ bool FCaptureWorker::ThreadSafe_ReadPixels(FRenderTarget* RT, TArray<FColor>& Ou
 
 	while(OutImageData.Num() == 0)
 	{
-		FWindowsPlatformProcess::Sleep(1.0f);
-		//FPlatformProcess::Sleep(TimeBetweenTicks);		
+		//FWindowsPlatformProcess::Sleep(1.0f);
+		FPlatformProcess::Sleep(TimeBetweenTicks);		
 	}
 
 	return OutImageData.Num() > 0;

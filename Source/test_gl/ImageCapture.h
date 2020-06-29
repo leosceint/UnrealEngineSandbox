@@ -42,7 +42,7 @@ public:
 
 	/* Time between ticks. Please account for the fact that it takes 1ms to wake up on a modern PC, so 0.01f would effectively be 0.011f */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Image Capture")
-	float TimeBetweenTicks = 0.08f;//0.008f;
+	float TimeBetweenTicks = 0.008f;
 
 private:
 	TUniquePtr<class FCaptureWorker> CaptureWorker;
@@ -63,7 +63,7 @@ private:
 	TQueue<TArray<uint8>, EQueueMode::Spsc> Inbox;
 
 public:
-	FCaptureWorker(float inTimeBetweenTicks, class USceneCaptureComponent2D* Camera);
+	FCaptureWorker(TWeakObjectPtr<AImageCapture> InOwner, float inTimeBetweenTicks, class USceneCaptureComponent2D* Camera);
 	virtual ~FCaptureWorker();
 
 	void Start();
