@@ -147,11 +147,11 @@ uint32 FCaptureWorker::Run()
 			{
 				CapturedImage = PngImageWrapper->GetCompressed();
 
-				// FFileHelper::SaveArrayToFile(CapturedImage, *(FPaths::ProjectDir() + TEXT("Out.png")));
+				FFileHelper::SaveArrayToFile(CapturedImage, *(FPaths::ProjectDir() + TEXT("Out.png")));
 
-				// AsyncTask(ENamedThreads::GameThread, [this](){
-				// 	UE_LOG(LogTemp, Log, TEXT("WE SAVE Image as FILE!"));
-				// });
+				AsyncTask(ENamedThreads::GameThread, [this](){
+					UE_LOG(LogTemp, Log, TEXT("WE SAVE Image as FILE!"));
+				});
 
 				Inbox.Enqueue(CapturedImage);
 
