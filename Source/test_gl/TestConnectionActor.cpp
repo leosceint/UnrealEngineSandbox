@@ -79,7 +79,7 @@ void ATestConnectionActor::SendImageWithEvent(TArray<uint8> Image, const FReceiv
 		bool bCmd = Socket->Send(Command, 8, Sent);
 		if(bCmd)
 		{
-			// Отправляем размер (длинный путь, но точно должен работать)
+		
 			uint32 ImageSize = (uint32)Image.Num();
 			Socket->Send((uint8*)&ImageSize, sizeof(uint32), Sent);			
 			// Отправляем картинку			
