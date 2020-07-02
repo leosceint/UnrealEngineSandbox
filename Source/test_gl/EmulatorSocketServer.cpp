@@ -96,6 +96,9 @@ void AEmulatorSocketServer::ExecuteOnDisconnected(TWeakObjectPtr<AEmulatorSocket
 
 void AEmulatorSocketServer::ExecuteOnMessageReceived(TWeakObjectPtr<AEmulatorSocketServer> thisObj)
 {
+	static uint32 expectedId = 0x0101;
+	static FCanData CanData;
+
 	// the second check is for when we quit PIE, we may get a message about a disconnect, but it's too late to act on it, because the thread has already been killed
 	if (!thisObj.IsValid())
 		return;	
@@ -108,9 +111,42 @@ void AEmulatorSocketServer::ExecuteOnMessageReceived(TWeakObjectPtr<AEmulatorSoc
 		return;
 	}
 
-	EmulatorData101 Data = ServerWorker->ReadFromInbox();
-	TArray<uint8> msg;
-	MessageReceivedDelegate.ExecuteIfBound(msg);
+	EmulatorData DataPacket = ServerWorker->ReadFromInbox();
+	
+	if(DataPacket.type == expectedId)
+	{
+		switch(DataPacket.type)
+		{
+			case 0x0101: 
+				CanData.lat = DataPacket.part1; 
+				CanData.lon = DataPacket.part2;
+				break;
+			case 0x0102:
+				CanData.height = DataPacket.part1;
+				CanData.course_angle = DataPacket.part2;
+				CanData.pitch = DataPacket.part3; 
+				break;
+			case 0x0103:
+				CanData.course = DataPacket.part1;
+				CanData.roll = DataPacket.part2;
+				CanData.peleng = DataPacket.part3;
+				break;
+			case 0x0104: 
+				CanData.angleV = DataPacket.part1;
+				CanData.angleH = DataPacket.part2;
+				break;
+		}
+		++expectedId;	
+	}
+	else
+	{
+		expectedId = 0x0101;
+	}
+	if(expectedId > 0x0104)
+	{
+		MessageReceivedDelegate.ExecuteIfBound(CanData);
+		expectedId = 0x0101;
+	}
 }
 
 bool FServerWorker::isConnected()
@@ -153,9 +189,9 @@ void FServerWorker::Start()
 	UE_LOG(LogTemp, Log, TEXT("Log: Created thread"));
 }
 
-EmulatorData101 FServerWorker::ReadFromInbox()
+EmulatorData FServerWorker::ReadFromInbox()
 {
-	EmulatorData101 Data;
+	EmulatorData Data;
 	Inbox.Dequeue(Data);
 	return Data;
 }
@@ -224,16 +260,16 @@ uint32 FServerWorker::Run()
 			ConnectionSocket->SetNonBlocking(false);	// set back to Blocking
 
 			// read bytes as emulator data struct (see CanData.h)
-			EmulatorData101 receivedData;
+			EmulatorData receivedData;
 			int32 BytesRead = 0;
-			if(!ConnectionSocket->Recv((uint8*)&receivedData, sizeof(EmulatorData101), BytesRead))
+			if(!ConnectionSocket->Recv((uint8*)&receivedData, sizeof(EmulatorData), BytesRead))
 			{
 				AsyncTask(ENamedThreads::GameThread, []() {
 				AEmulatorSocketServer::PrintToConsole(FString::Printf(TEXT("In progress read failed. EmulatorSocketServer.cpp: line %d"), __LINE__), true);
 				});
 				continue;
 			}
-			ConvertData(receivedData);
+
 			Inbox.Enqueue(receivedData);
 			AsyncTask(ENamedThreads::GameThread, [this]() {
 				ThreadSpawnerActor.Get()->ExecuteOnMessageReceived(ThreadSpawnerActor);
@@ -260,41 +296,6 @@ uint32 FServerWorker::Run()
 	SocketShutdown();
 	
 	return 0;
-}
-
-void FServerWorker::ConvertData(EmulatorData101 Data)
-{
-	if(Data.type == 0x0101)
-	{
-		AsyncTask(ENamedThreads::GameThread, []() {
-		AEmulatorSocketServer::PrintToConsole(TEXT("DATA 101"), false);
-		});
-		return;
-	}
-	if(Data.type == 0x0102)
-	{
-		AsyncTask(ENamedThreads::GameThread, []() {
-		AEmulatorSocketServer::PrintToConsole(TEXT("DATA 102"), false);
-		});
-		EmulatorData102* pData = reinterpret_cast<EmulatorData102*>(&Data);
-		return;
-	}
-	if(Data.type == 0x0103)
-	{
-		AsyncTask(ENamedThreads::GameThread, []() {
-		AEmulatorSocketServer::PrintToConsole(TEXT("DATA 103"), false);
-		});
-		EmulatorData103* pData = reinterpret_cast<EmulatorData103*>(&Data);
-		return;
-	}
-	if(Data.type == 0x0104)
-	{
-		AsyncTask(ENamedThreads::GameThread, []() {
-		AEmulatorSocketServer::PrintToConsole(TEXT("DATA 104"), false);
-		});
-		EmulatorData104* pData = reinterpret_cast<EmulatorData104*>(&Data);
-		return;
-	}
 }
 
 void FServerWorker::Stop()
