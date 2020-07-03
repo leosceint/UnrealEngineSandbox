@@ -14,7 +14,7 @@
 
 DECLARE_DYNAMIC_DELEGATE(FEmulatorServerDisconnectDelegate);
 DECLARE_DYNAMIC_DELEGATE(FEmulatorServerConnectDelegate);
-DECLARE_DYNAMIC_DELEGATE_OneParam(FEmulatorServerDataReceivedDelegate, UPARAM(ref) TArray<uint8>&, Message);
+DECLARE_DYNAMIC_DELEGATE_OneParam(FEmulatorServerDataReceivedDelegate, UPARAM(ref) FCanData, DataFromCan);
 
 
 UCLASS()
@@ -57,7 +57,7 @@ public:
 
 	/* Buffer size in bytes. It's set only when creating a socket, never afterwards. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Emulator Server")
-	int32 ReceiveBufferSize = sizeof(EmulatorData101);
+	int32 ReceiveBufferSize = sizeof(EmulatorData);
 
 	/* Time between ticks. Please account for the fact that it takes 1ms to wake up on a modern PC, so 0.01f would effectively be 0.011f */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Emulator Server")
@@ -90,7 +90,7 @@ private:
 	bool bConnected 	= false;	
 	bool bShouldListen 	= true;
 	// SPSC = single producer, single consumer.
-	TQueue<EmulatorData101, EQueueMode::Spsc> Inbox; // Messages we read from socket and send to main thread. Runner thread is producer, main thread is consumer.
+	TQueue<EmulatorData, EQueueMode::Spsc> Inbox; // Messages we read from socket and send to main thread. Runner thread is producer, main thread is consumer.
 
 public:
 
@@ -102,7 +102,7 @@ public:
 	void Start();
 
 	/* Reads a message from the inbox queue */
-	EmulatorData101 ReadFromInbox();
+	EmulatorData ReadFromInbox();
 
 	// Begin FRunnable interface.
 	virtual bool Init() override;
@@ -116,8 +116,6 @@ public:
 
 	/* Getter for bConnected */
 	bool isConnected();
-
-	void ConvertData(EmulatorData101 Data);
 
 private:
 
