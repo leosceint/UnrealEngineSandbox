@@ -96,8 +96,8 @@ void AEmulatorSocketServer::ExecuteOnDisconnected(TWeakObjectPtr<AEmulatorSocket
 
 void AEmulatorSocketServer::ExecuteOnMessageReceived(TWeakObjectPtr<AEmulatorSocketServer> thisObj)
 {
-	static uint32 expectedId = 0x0101;
-	static FCanData CanData;
+	//static uint32 expectedId = 0x0101;
+	//static FCanData CanData;
 
 	// the second check is for when we quit PIE, we may get a message about a disconnect, but it's too late to act on it, because the thread has already been killed
 	if (!thisObj.IsValid())
@@ -269,9 +269,11 @@ uint32 FServerWorker::Run()
 				});
 				continue;
 			}
+			
 
 			Inbox.Enqueue(receivedData);
 			AsyncTask(ENamedThreads::GameThread, [this]() {
+				UE_LOG(LogTemp, Log, TEXT("RECEIVED PACKET"));
 				ThreadSpawnerActor.Get()->ExecuteOnMessageReceived(ThreadSpawnerActor);
 			});	
 		}

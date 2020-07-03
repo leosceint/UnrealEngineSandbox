@@ -69,6 +69,9 @@ private:
 	FEmulatorServerConnectDelegate ConnectedDelegate;
 	FEmulatorServerDataReceivedDelegate MessageReceivedDelegate;
 
+	FCanData CanData;
+	uint32 expectedId = 0x0101;
+
 };
 
 /** Thread Socket Class, based on FSocketWorker, developed by Spartan **/
