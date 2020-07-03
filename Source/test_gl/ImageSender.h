@@ -51,7 +51,7 @@ public:
 	int32 SendBufferSize = 16384;
 
 	UPROPERTY(EditAnyWhere, BlueprintReadWrite, Category = "Client to Send Images")
-	float TimeBetweenTicks = 0.008f;
+	float TimeBetweenTicks = 0.02f; // 50 Hz
 
 	static void PrintToConsole(FString Str, bool Error);
 

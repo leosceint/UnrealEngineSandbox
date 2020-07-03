@@ -253,6 +253,7 @@ uint32 FImageSenderWorker::Run()
 		// if Outbox has Image to send, send it
 		while (!Outbox.IsEmpty())
 		{
+			ClientSocket->SetNonBlocking(true);
 			TArray<uint8> ImageToSend; 
 			Outbox.Dequeue(ImageToSend);
 			
@@ -283,6 +284,7 @@ uint32 FImageSenderWorker::Run()
 				bRun = false;
 				continue;
 			}
+			ClientSocket->SetNonBlocking(false);
 		}
 
 		/* In order to sleep, we will account for how much this tick took due to sending and receiving */
@@ -297,9 +299,10 @@ uint32 FImageSenderWorker::Run()
 	}
 
 	// close session
-	const uint8* Command = (uint8*)TCHAR_TO_UTF8(TEXT("END_____"));
+	
 	if(bConnected)
 	{
+		const uint8* Command = (uint8*)TCHAR_TO_UTF8(TEXT("END_____"));
 		BlockingSend(Command, 8);
 	}
 
