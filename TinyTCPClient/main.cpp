@@ -2,8 +2,7 @@
 #include <iostream>
 #include <WinSock2.h>
 #include <thread>
-#include <random>
-#include <ctime>
+
 
 #pragma comment (lib, "Ws2_32.lib")
 
@@ -21,7 +20,7 @@ int main()
     connection =  socket(AF_INET, SOCK_STREAM, 0);
     addr.sin_addr.s_addr = inet_addr("127.0.0.1");
     addr.sin_family = AF_INET;
-    addr.sin_port = htons(8888);
+    addr.sin_port = htons(27000);
 
     int result = connect(connection, (SOCKADDR*)&addr, sizeof(addr));
     if(result == 0)
@@ -34,10 +33,10 @@ int main()
         Data.pos2 = 3444;
         Data.time = 0;
         
-        int IdxSent = 0;
-        while(Data.time < 1800)
+        unsigned int IdxSent = 0;
+        unsigned int type_appendix = 0;
+        while(Data.time < 20000)
         {
-            unsigned int type_appendix = static_cast<unsigned int>(rand()%4);
             Data.type = 0x0101 + type_appendix;
             result = send(connection, (char*)&Data, sizeof(CanData), 0);
             if (result == SOCKET_ERROR)
@@ -47,6 +46,9 @@ int main()
             cout << IdxSent << endl;
             ++Data.time;
             ++IdxSent;
+            ++type_appendix;
+            if(type_appendix > 3)
+                type_appendix = 0;
         }
         cout << ">> WE SENT "<< IdxSent << " PACKAGES <<" << endl;
     }
