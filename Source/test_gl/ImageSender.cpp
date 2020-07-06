@@ -223,11 +223,10 @@ uint32 FImageSenderWorker::Run()
 			else 
 			{
 				AsyncTask(ENamedThreads::GameThread, []() { 
-					AImageSender::PrintToConsole(FString::Printf(TEXT("Couldn't connect to server. ImageSender.cpp: line %d"), __LINE__), true); 
+					AImageSender::PrintToConsole(TEXT("Not Connected"), false); 
 				});
-				bRun = false;				
+				continue;				
 			}
-			continue;
 		}
 
 		if (!ClientSocket)
