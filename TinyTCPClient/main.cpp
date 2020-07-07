@@ -52,8 +52,8 @@ int main()
             cout << " !! 2. Data sent #";
             this_thread::sleep_for(2ms);
             cout << dec << IdxSent;
-            cout << " <type> -- " << hex << setfill('0')
-            << setw(4) << showbase << Data.type << endl;
+            cout << " <type> -- " << hex << showbase << setfill('0')
+            << setw(4) << Data.type << endl;
             ++Data.time;
             ++IdxSent;
             ++type_appendix;

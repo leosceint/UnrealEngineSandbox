@@ -59,7 +59,7 @@ void AEmulatorSocketServer::StopServer()
 
 	if(ServerWorker)
 	{
-		UE_LOG(LogTemp, Log, TEXT("Server Stopped"));
+		UE_LOG(LogTemp, Warning, TEXT("<SERVER> Stopped"));
 		ServerWorker->Stop();
 	}
 }
@@ -136,6 +136,10 @@ void AEmulatorSocketServer::ExecuteOnMessageReceived(TWeakObjectPtr<AEmulatorSoc
 		}
 		++expectedId;	
 	}
+	else if(DataPacket.type == expectedId-1)
+	{
+		return;
+	}
 	else
 	{
 		expectedId = 0x0101;
@@ -165,7 +169,7 @@ FServerWorker::FServerWorker(FString inIp, const int32 inPort, TWeakObjectPtr<AE
 
 FServerWorker::~FServerWorker()
 {
-	AsyncTask(ENamedThreads::GameThread, []() {	AEmulatorSocketServer::PrintToConsole("Tcp socket thread was destroyed.", false); });
+	AsyncTask(ENamedThreads::GameThread, []() {	AEmulatorSocketServer::PrintToConsole("<SERVER thread> was destroyed.", false); });
 	Stop();
 	if (Thread)
 	{
@@ -184,7 +188,7 @@ void FServerWorker::Start()
 		UE_LOG(LogTemp, Log, TEXT("Log: Thread isn't null. It's: %s"), *Thread->GetThreadName());
 	}
 	Thread = FRunnableThread::Create(this, *FString::Printf(TEXT("FServerWorker %s:%d"), *ipAddress, port), 128 * 1024, TPri_Normal);
-	UE_LOG(LogTemp, Log, TEXT("Log: Created thread"));
+	UE_LOG(LogTemp, Warning, TEXT("<SERVER thread> created"));
 }
 
 EmulatorData FServerWorker::ReadFromInbox()
@@ -216,7 +220,7 @@ uint32 FServerWorker::Run()
 		return 0;
 	}
 
-	AsyncTask(ENamedThreads::GameThread, []() {	AEmulatorSocketServer::PrintToConsole("Starting Tcp socket server thread.", false); });
+	AsyncTask(ENamedThreads::GameThread, []() {	AEmulatorSocketServer::PrintToConsole("<SERVER thread> start", false); });
 
 	ListenSocket->SetReceiveBufferSize(RecvBufferSize, ActualRecvBufferSize);
 	ListenSocket->Listen(8);
@@ -270,10 +274,38 @@ uint32 FServerWorker::Run()
 			
 
 			Inbox.Enqueue(receivedData);
-			AsyncTask(ENamedThreads::GameThread, [this]() {
-				UE_LOG(LogTemp, Log, TEXT("RECEIVED PACKET"));
-				ThreadSpawnerActor.Get()->ExecuteOnMessageReceived(ThreadSpawnerActor);
-			});	
+			
+			switch(receivedData.type)
+			{
+				case 0x0101:
+					AsyncTask(ENamedThreads::GameThread, [this]() {
+						UE_LOG(LogTemp, Log, TEXT("# 0x0101"));
+						UE_LOG(LogTemp, Log, TEXT("RECEIVED PACKET"));
+						ThreadSpawnerActor.Get()->ExecuteOnMessageReceived(ThreadSpawnerActor);
+					});	
+				break;
+				case 0x0102:
+					AsyncTask(ENamedThreads::GameThread, [this]() {
+						UE_LOG(LogTemp, Log, TEXT("# 0x0102"));
+						UE_LOG(LogTemp, Log, TEXT("RECEIVED PACKET"));
+						ThreadSpawnerActor.Get()->ExecuteOnMessageReceived(ThreadSpawnerActor);
+					});
+				break;
+				case 0x0103:
+					AsyncTask(ENamedThreads::GameThread, [this]() {
+						UE_LOG(LogTemp, Log, TEXT("# 0x0103"));
+						UE_LOG(LogTemp, Log, TEXT("RECEIVED PACKET"));
+						ThreadSpawnerActor.Get()->ExecuteOnMessageReceived(ThreadSpawnerActor);
+					});
+				break;
+				case 0x0104:
+					AsyncTask(ENamedThreads::GameThread, [this]() {
+						UE_LOG(LogTemp, Log, TEXT("# 0x0104"));
+						UE_LOG(LogTemp, Log, TEXT("RECEIVED PACKET"));
+						ThreadSpawnerActor.Get()->ExecuteOnMessageReceived(ThreadSpawnerActor);
+					});
+				break;
+			}	
 		}
 
 		/* In order to sleep, we will account for how much this tick took due to sending and receiving */
